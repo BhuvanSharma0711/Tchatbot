@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
+import UserInfoDto from './dto/userinfo.dto'
 
 @Injectable()
 export class UserService {
@@ -6,8 +7,9 @@ export class UserService {
     return 'Hello World in user!';
   }
 
-  async getName(body:{username:string}) {
-    if (!username) {
+  async getName(body:UserInfoDto) {
+    const { name, UID_type, UID, email } = body;
+    if(!name || !UID_type || !UID || !email) {
       throw new ForbiddenException('Missing required fields');
     }
   }
