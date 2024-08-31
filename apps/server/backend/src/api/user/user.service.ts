@@ -4,6 +4,7 @@ import sendEmail from 'src/handlers/email.global';
 import Redis from 'ioredis';
 import { PrismaService } from 'src/prisma/prisma.service';
 import handleErrors from 'src/handlers/handleErrors.global';
+import ticketinfoDto from './dto/ticketinfo.dto';
 
 @Injectable()
 export class UserService {
@@ -66,6 +67,7 @@ export class UserService {
       const text = `Your verification code is ${verificationCode}`;
       await this.sendVerificationCode(email, subject, text);
     }
+    return user;
   }
 
   async verifyEmail(body: { email: string; token: string }, response) {
@@ -85,5 +87,56 @@ export class UserService {
         isVerified: true,
       },
     });
+    return { message: 'Email verified successfully' };
+  }
+
+  async bookTicket(body: ticketinfoDto, email: string) {
+    const { show1,show2,numbTicket } = body;
+  
+    if (!numbTicket || !email) {
+      throw new ForbiddenException('Missing required fields');
+    }
+  
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email: email,
+      },
+      select: {
+        id: true,
+      },
+    });
+  
+    if (!user) {
+      throw new Error('User not found');
+    }
+  
+    const existingTicket = await this.prisma.ticket.findUnique({
+      where: {
+        userId: user.id,
+      },
+    });
+  
+    if (existingTicket) {
+      await this.prisma.ticket.update({
+        where: {
+          id: existingTicket.id,
+        },
+        data: {
+          show1,
+          show2,
+          numbTicket,
+        },
+      });
+    } else {
+      await this.prisma.ticket.create({
+        data: {
+          userId: user.id,
+          show1,
+          show2,
+          numbTicket,
+        },
+      });
+    }
   }
 }
+
