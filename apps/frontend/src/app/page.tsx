@@ -1,98 +1,172 @@
 "use client";
+import React, { useEffect, useState } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
-// Importing necessary hooks and types from React
-import { useState, CSSProperties } from 'react';
+// interface NumberInputProps {
+//   min?: number;
+//   max?: number;
+//   step?: number;
+//   initialValue?: number;
+//   onValueChange?: (value: number) => void;
+// }
+
 
 export default function Home() {
-  // State to toggle the visibility of the chatbot
   const [showChatbot, setShowChatbot] = useState(false);
-
-  // State to store chat messages
   const [messages, setMessages] = useState<{ sender: string; text: string }[]>([]);
-
-  // State to manage the input field value
   const [inputValue, setInputValue] = useState('');
-
-  // State to track the current question
   const [currentQuestion, setCurrentQuestion] = useState<number>(0);
+  const [bookingStarted, setBookingStarted] = useState<boolean>(false);
+  const [optionSelected, setOptionSelected] = useState<boolean>(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [userData ,setUserData]=useState<{ [key: string]: string}>({});
 
-  // List of questions to ask
   const questions = [
+    "What's your date for the visit?",
     "What's your name?",
-    "What's your roll number?",
-    "What's your father's name?",
-    "What's your mother's name?",
-    "What's your date of birth?"
+    "How many tickets do you need?",
+    "What is your UID type?",
+    "What is your UID no.?",
+    "Enter the email for verification?",
+    "Enter OTP?",
+    "Thank you for providing your information",
   ];
 
-  // Function to toggle chatbot visibility
   const toggleChatbot = () => {
+    if (!showChatbot) {
+      setMessages([{ sender: 'bot', text: 'Do you like to buy tickets?' }]);
+    }
     setShowChatbot(!showChatbot);
   };
 
-  // Function to send a message, and simulate a bot response
   const sendMessage = (message: string, sender: string) => {
     if (message.trim() !== '') {
-      // Update message list with user message
       setMessages((prevMessages) => [...prevMessages, { sender, text: message }]);
       setInputValue('');
 
-      // If there are still questions to ask, proceed to the next question
-      if (currentQuestion < questions.length) {
-        setTimeout(() => {
-          // Add the next question to messages
+      if (!bookingStarted && !optionSelected) {
+        setOptionSelected(true);
+        if (message.toLowerCase() === 'yes') {
+          setBookingStarted(true);
+          setCurrentQuestion(1);
           setMessages((prevMessages) => [
             ...prevMessages,
-            { sender: 'bot', text: questions[currentQuestion] }
+            { sender: 'bot', text: questions[currentQuestion] },
           ]);
-          // Move to the next question
-          setCurrentQuestion((prev) => prev + 1);
-        }, 500);
+        } else if (message.toLowerCase() === 'no') {
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            { sender: 'bot', text: 'Thank you for your time!' },
+          ]);
+          setTimeout(() => {
+            setOptionSelected(false);
+            setShowChatbot(false);
+          }, 2000);
+        }
       } else {
-        // Simulate final response or end of conversation
-        setTimeout(() => {
+        const questionKey=`question_${currentQuestion}`;
+        setUserData((prevData)=>({
+          ...prevData,
+          [questionKey]: message,
+        }));
+        if (currentQuestion === 1 && selectedDate) {
           setMessages((prevMessages) => [
             ...prevMessages,
-            { sender: 'bot', text: 'Thank you for providing the information!' }
+            { sender: 'user', text: selectedDate.toDateString() },
+            { sender: 'bot', text: questions[currentQuestion + 1] }
           ]);
-        }, 500);
+          setCurrentQuestion((prev) => prev + 1);
+          setSelectedDate(null); // Reset the date picker for the next question
+        } else if (currentQuestion < questions.length) {
+          setCurrentQuestion((prev) => prev + 1);
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            { sender: 'bot', text: questions[currentQuestion] },
+          ]);
+        } else {
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            { sender: 'bot', text: 'Thank you for providing the information!' },
+          ]);
+          setTimeout(() => {
+            setShowChatbot(false);
+          }, 0);
+        }
       }
     }
   };
 
-  // Handle send button click event
-  const handleSendButtonClick = () => {
-    sendMessage(inputValue, 'user');
+  // const NumberInput: React.FC<NumberInputProps>=({
+  //   min = 0,
+  //   max = 100,
+  //   step = 1,
+  //   initialValue = 0,
+  //   onValueChange,
+  // })=>{
+  //   const [value , setValue ]=useState<number>(initialValue);
+
+  //   const handleIncrement=()=>{
+  //     const newValue= value +step;
+  //     if(newValue<=max){
+  //       setValue(newValue);
+  //       onValueChange?.(newValue);
+  //     }
+  //   };
+
+  //   const handleDecrement=()=>{
+  //     const newValue= value -step;
+  //     if(newValue>=min){
+  //       setValue(newValue);
+  //       onValueChange?.(newValue);
+  //     }
+  //   }
+  // };
+  const handleDateChange = (date: Date | null) => {
+    if (date) {
+      setSelectedDate(date);
+      setInputValue(date.toDateString());
+      sendMessage(date.toDateString(), 'user');
+    }
   };
 
-  // Handle key down event in input field to send message on Enter key
+  const handleSendButtonClick = () => {
+    if (currentQuestion === 1 && selectedDate) {
+      sendMessage(selectedDate.toDateString(), 'user');
+    } else {
+      sendMessage(inputValue, 'user');
+    }
+  };
+
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSendButtonClick();
     }
   };
-
+useEffect(()=>{
+  if(currentQuestion=== questions.length-1){
+    console.log('all user Input',userData);
+  }
+}, [currentQuestion,userData]);
   return (
     <div style={styles.container}>
-      {/* Header section with title */}
       <header style={styles.header}>
         <h1 style={styles.title}>Chatbot Interface</h1>
       </header>
-      {/* Button to toggle chatbot visibility */}
       <div style={styles.buttonContainer}>
-        <button style={styles.chatButton} onClick={toggleChatbot}>
-          {showChatbot ? 'Close Chat' : 'Open Chat'}
+        <button
+          style={{ ...styles.chatButton, ...(showChatbot ? styles.chatButtonHover : {}) }}
+          onClick={toggleChatbot}
+        >
+          {showChatbot ? 'Close Chat' : <img src="aichatbot.png" alt="Chatbot" />}
         </button>
       </div>
 
-      {/* Chatbot UI */}
       {showChatbot && (
         <div style={styles.chatContainer}>
-          {/* Header of the chatbot */}
           <div style={styles.chatHeader} onClick={toggleChatbot}>
             Chatbot
           </div>
-          {/* Chat messages area */}
           <div style={styles.chatMessages}>
             {messages.map((message, index) => (
               <div
@@ -105,18 +179,39 @@ export default function Home() {
                 {message.text}
               </div>
             ))}
+            {!bookingStarted && !optionSelected && (
+              <div style={styles.initialOptions}>
+                <button style={styles.yesButton} onClick={() => sendMessage('yes', 'user')}>
+                  Yes
+                </button>
+                <button style={styles.noButton} onClick={() => sendMessage('no', 'user')}>
+                  No
+                </button>
+              </div>
+            )}
           </div>
-          {/* Chat input and send button */}
           <div style={styles.chatInputContainer}>
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleInputKeyDown}
-              placeholder="Type your message..."
-              style={styles.chatInput}
-            />
-            <button style={styles.sendButton} onClick={handleSendButtonClick}>
+            {currentQuestion === 1 ? (
+              <DatePicker
+                selected={selectedDate}
+                onChange={handleDateChange}
+                placeholderText="Select a date"
+                style={styles.chatInput}
+              />
+            ) : (
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleInputKeyDown}
+                placeholder="Type your message..."
+                style={styles.chatInput}
+              />
+            )}
+            <button
+              style={{ ...styles.sendButton, ...(inputValue || selectedDate ? styles.sendButtonHover : {}) }}
+              onClick={handleSendButtonClick}
+            >
               Send
             </button>
           </div>
@@ -126,133 +221,154 @@ export default function Home() {
   );
 }
 
-// CSS styles for the components
-const styles: { [key: string]: CSSProperties } = {
+const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    fontFamily: 'Arial, sans-serif', // Font family for the entire page
-    margin: 0, // Remove default margin
-    padding: 0, // Remove default padding
-    height: '100vh', // Full viewport height
-    display: 'flex', // Flexbox layout
-    flexDirection: 'column', // Column layout
-    justifyContent: 'center', // Center items vertically
-    alignItems: 'center', // Center items horizontally
-    background: '#e0e5ec', // Background color
-    position: 'relative', // Positioning for child elements
-    backgroundImage: 'url("himan.jpg")', // Background image path
-    backgroundSize: 'cover', // Cover the entire container
-    backgroundPosition: 'center', // Center the background image
-    backgroundRepeat: 'no-repeat', // Do not repeat the background image
+    fontFamily: 'Arial, sans-serif',
+    margin: 0,
+    padding: 0,
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    background: '#e0e5ec',
+    position: 'relative',
+    backgroundImage: 'url("himan.jpg")',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
   },
-    header: {
-    textAlign: 'center', // Center align text in header
-    marginBottom: '500px', // Margin below header
-    padding: '20px', // Padding inside header
-    background: '#cdf0ff', // Header background color
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', // Header shadow
-    borderRadius: '10px', // Rounded corners
-    width: '80%', // Width of header
-    maxWidth: '600px', // Maximum width of header
+  header: {
+    textAlign: 'center',
+    marginBottom: '500px',
+    padding: '20px',
+    background: '#cdf0ff',
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+    borderRadius: '10px',
+    width: '80%',
+    maxWidth: '600px',
   },
   title: {
-    color: '#333333', // Title text color
-    fontSize: '2rem', // Font size of title
-    margin: 0, // Remove default margin
+    color: '#333333',
+    fontSize: '2rem',
+    margin: 0,
   },
   buttonContainer: {
-    position: 'fixed', // Fixed positioning for the button
-    bottom: '20px', // Distance from the bottom
-    right: '20px', // Distance from the right
+    position: 'fixed',
+    bottom: '20px',
+    right: '20px',
+    borderRadius: '50%',
   },
   chatButton: {
-    padding: '12px 24px', // Button padding
-    fontSize: '16px', // Font size of button text
-    color: '#fff', // Button text color
-    backgroundColor: '#007bff', // Button background color
-    border: 'none', // Remove border
-    borderRadius: '25px', // Rounded corners
-    cursor: 'pointer', // Pointer cursor on hover
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', // Button shadow
-    transition: 'background-color 0.3s, transform 0.3s', // Transition effects
+    padding: '15px 15px',
+    fontSize: '16px',
+    color: '#fff',
+    backgroundColor: '#1e1f1f',
+    border: 'none',
+    marginRight: '25px',
+    cursor: 'pointer',
+    boxShadow: '6px 6px 8px #000000, -4px -4px 8px #000000',
+    transition: 'background-color 0.3s, transform 0.3s',
+    width: '90px',
+    height: '90px',
+    borderRadius: '50%',
   },
   chatButtonHover: {
-    backgroundColor: '#0056b3', // Hover background color
-    transform: 'translateY(-2px)', // Hover transform effect
+    backgroundColor: '#0056b3',
+    transform: 'translateY(-2px)',
   },
   chatContainer: {
-    position: 'fixed', // Fixed positioning for the chat container
-    bottom: '20px', // Distance from the bottom
-    right: '20px', // Distance from the right
-    width: '350px', // Width of chat container
-    height: '450px', // Height of chat container
-    borderRadius: '10px', // Rounded corners
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)', // Shadow for chat container
-    background: '#ffffff', // Background color of chat container
-    display: 'flex', // Flexbox layout
-    flexDirection: 'column', // Column layout
-    zIndex: 1000, // Ensure chat container is on top
+    position: 'fixed',
+    bottom: '20px',
+    right: '20px',
+    width: '350px',
+    height: '450px',
+    borderRadius: '10px',
+    backgroundColor: '#ffffff',
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+    display: 'flex',
+    flexDirection: 'column',
   },
   chatHeader: {
-    background: '#007bff', // Header background color
-    color: '#ffffff', // Header text color
-    padding: '15px', // Padding inside header
-    borderRadius: '10px 10px 0 0', // Rounded top corners
-    textAlign: 'center', // Center align text
-    cursor: 'pointer', // Pointer cursor on hover
-    fontWeight: 'bold', // Bold text
+    backgroundColor: '#114378',
+    color: '#ffffff',
+    padding: '10px',
+    textAlign: 'center',
+    cursor: 'pointer',
+    borderTopLeftRadius: '10px',
+    borderTopRightRadius: '10px',
   },
   chatMessages: {
-    flex: 1, // Flex-grow to fill available space
-    padding: '15px', // Padding inside messages area
-    overflowY: 'auto', // Scroll if content overflows vertically
-    borderBottom: '1px solid #ddd', // Bottom border for messages area
-  },
-  chatInputContainer: {
-    display: 'flex', // Flexbox layout for input and button
-    borderTop: '1px solid #ddd', // Top border for input container
-    padding: '10px', // Padding inside input container
-  },
-  chatInput: {
-    flex: 1, // Flex-grow to fill available space
-    border: '1px solid #ddd', // Border around input field
-    padding: '10px', // Padding inside input field
-    borderRadius: '20px 0 0 20px', // Rounded left corners
-    color: '#333333', // Text color inside input field
-    fontSize: '14px', // Font size of input text
-  },
-  sendButton: {
-    padding: '10px 20px', // Button padding
-    border: 'none', // Remove border
-    background: '#007bff', // Button background color
-    color: '#fff', // Button text color
-    borderRadius: '0 20px 20px 0', // Rounded right corners
-    cursor: 'pointer', // Pointer cursor on hover
-    transition: 'background-color 0.3s', // Transition effect for background color
-    fontSize: '14px', // Font size of button text
-  },
-  sendButtonHover: {
-    background: '#0056b3', // Hover background color
+    flex: 1,
+    padding: '10px',
+    overflowY: 'auto',
+    borderBottom: '1px solid #ddd',
   },
   message: {
-    marginBottom: '10px', // Margin below each message
-    padding: '10px', // Padding inside message box
-    borderRadius: '15px', // Rounded corners
-    fontSize: '14px', // Font size of message text
-    maxWidth: '80%', // Maximum width of message box
-  },
-  userMessage: {
-    background: '#007bff', // Background color for user messages
-    color: '#ffffff', // Text color for user messages
-    alignSelf: 'flex-end', // Align messages to the end (right)
+    marginBottom: '10px',
+    padding: '10px',
+    borderRadius: '10px',
+    maxWidth: '80%',
+    wordWrap: 'break-word',
   },
   botMessage: {
-    background: '#f1f1f1', // Background color for bot messages
-    color: '#333333', // Text color for bot messages
-    alignSelf: 'flex-start', // Align messages to the start (left)
+    backgroundColor: 'blue',
+    alignSelf: 'flex-start',
+  },
+  userMessage: {
+    backgroundColor: '#b4bbc6',
+    color: '#ffffff',
+    alignSelf: 'flex-end',
+    textAlign:'right',
+  },
+  initialOptions: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginTop: '10px',
+  },
+  yesButton: {
+    backgroundColor: '#28a745',
+    color: '#ffffff',
+    padding: '10px 20px',
+    margin: '0 5px',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+  },
+  noButton: {
+    backgroundColor: '#dc3545',
+    color: '#ffffff',
+    padding: '10px 20px',
+    margin: '0 5px',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+  },
+  chatInputContainer: {
+    padding: '10px',
+    borderTop: '1px solid #ddd',
+    display: 'flex',
+    color:'black',
+  },
+  chatInput: {
+    flex: 1,
+    padding: '10px',
+    fontSize: '14px',
+    borderRadius: '5px',
+    border: '1px solid #ddd',
+    outline: 'none',
+    marginRight: '10px',
+  },
+  sendButton: {
+    backgroundColor: '#007bff',
+    color: '#ffffff',
+    border: 'none',
+    padding: '10px 20px',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s',
+  },
+  sendButtonHover: {
+    backgroundColor: '#0056b3',
   },
 };
-
-
-
-
-
