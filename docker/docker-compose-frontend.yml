@@ -6,6 +6,6 @@ services:
       context: ../apps/frontend
       dockerfile: dockerfile
     env_file:
-      - .env.frontend
+      - .env
     ports:
       - "3000:3000"

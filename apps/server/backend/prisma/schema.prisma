@@ -9,10 +9,12 @@ datasource db {
 
 model Ticket {
   id       String    @id @default(cuid())
-  user     User      @relation(fields: [userId], references: [id])
+  user     User?     @relation(fields: [userId], references: [id])
   userId   String
-  show1    Boolean
-  date     DateTime
+  show1    Boolean   @default(false)
+  show2    Boolean   @default(false)
+  date     DateTime  @default(now())
+  numbTIck Int
 }
 model User {
   id         String  @id @default(cuid())
@@ -20,7 +22,6 @@ model User {
   email      String  @unique
   UID_type   String
   UID        String  @unique
-  numbTick   Int?
   isVerified Boolean @default(false)
   tickect    Ticket[]
   createdAt  DateTime @default(now())
