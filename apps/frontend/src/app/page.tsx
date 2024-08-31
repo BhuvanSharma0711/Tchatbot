@@ -1,16 +1,7 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-
-// interface NumberInputProps {
-//   min?: number;
-//   max?: number;
-//   step?: number;
-//   initialValue?: number;
-//   onValueChange?: (value: number) => void;
-// }
-
 
 export default function Home() {
   const [showChatbot, setShowChatbot] = useState(false);
@@ -20,16 +11,19 @@ export default function Home() {
   const [bookingStarted, setBookingStarted] = useState<boolean>(false);
   const [optionSelected, setOptionSelected] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [userData ,setUserData]=useState<{ [key: string]: string}>({});
+  const [userData, setUserData] = useState<{ [key: string]: string }>({});
+  const [emailVerified, setEmailVerified] = useState<boolean>(false); // Track email submission status
+
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL; // Replace with your actual API base URL
 
   const questions = [
-    "What's your date for the visit?",
     "What's your name?",
-    "How many tickets do you need?",
     "What is your UID type?",
     "What is your UID no.?",
     "Enter the email for verification?",
     "Enter OTP?",
+    "What's your date for the visit?",
+    "How many tickets do you need?",
     "Thank you for providing your information",
   ];
 
@@ -49,7 +43,7 @@ export default function Home() {
         setOptionSelected(true);
         if (message.toLowerCase() === 'yes') {
           setBookingStarted(true);
-          setCurrentQuestion(1);
+          setCurrentQuestion(0); // Start with the first question in the new sequence
           setMessages((prevMessages) => [
             ...prevMessages,
             { sender: 'bot', text: questions[currentQuestion] },
@@ -65,24 +59,35 @@ export default function Home() {
           }, 2000);
         }
       } else {
-        const questionKey=`question_${currentQuestion}`;
-        setUserData((prevData)=>({
+        const questionKey = getQuestionKey(currentQuestion);
+        setUserData((prevData) => ({
           ...prevData,
           [questionKey]: message,
         }));
-        if (currentQuestion === 1 && selectedDate) {
+
+        if (currentQuestion === 3) {
+          handleEmailInput(message); // Store email as soon as it is entered
+        } else if (currentQuestion === 5 && selectedDate) {
           setMessages((prevMessages) => [
             ...prevMessages,
             { sender: 'user', text: selectedDate.toDateString() },
             { sender: 'bot', text: questions[currentQuestion + 1] }
           ]);
+          setUserData((prevData) => ({
+            ...prevData,
+            'date_for_visit': selectedDate.toDateString(), // Store selected date in userData
+          }));
           setCurrentQuestion((prev) => prev + 1);
           setSelectedDate(null); // Reset the date picker for the next question
-        } else if (currentQuestion < questions.length) {
+        } else if (currentQuestion < questions.length - 1) {
+          if (currentQuestion === 4 && !emailVerified) {
+            // Do not proceed to next question if email submission is not successful
+            return;
+          }
           setCurrentQuestion((prev) => prev + 1);
           setMessages((prevMessages) => [
             ...prevMessages,
-            { sender: 'bot', text: questions[currentQuestion] },
+            { sender: 'bot', text: questions[currentQuestion + 1] },
           ]);
         } else {
           setMessages((prevMessages) => [
@@ -91,37 +96,75 @@ export default function Home() {
           ]);
           setTimeout(() => {
             setShowChatbot(false);
-          }, 0);
+          }, 2000);
         }
       }
     }
   };
 
-  // const NumberInput: React.FC<NumberInputProps>=({
-  //   min = 0,
-  //   max = 100,
-  //   step = 1,
-  //   initialValue = 0,
-  //   onValueChange,
-  // })=>{
-  //   const [value , setValue ]=useState<number>(initialValue);
+  const getQuestionKey = (index: number) => {
+    switch (index) {
+      case 0: return 'name';
+      case 1: return 'UID_type';
+      case 2: return 'UID';
+      case 3: return 'email';
+      case 4: return 'OTP';
+      case 5: return 'date_for_visit';
+      case 6: return 'ticket_count';
+      default: return '';
+    }
+  };
 
-  //   const handleIncrement=()=>{
-  //     const newValue= value +step;
-  //     if(newValue<=max){
-  //       setValue(newValue);
-  //       onValueChange?.(newValue);
-  //     }
-  //   };
+  const handleEmailInput = async (email: string) => {
+    setUserData((prevData) => ({
+      ...prevData,
+      email,
+    }));
 
-  //   const handleDecrement=()=>{
-  //     const newValue= value -step;
-  //     if(newValue>=min){
-  //       setValue(newValue);
-  //       onValueChange?.(newValue);
-  //     }
-  //   }
-  // };
+    const datatosend = { ...userData, email }
+    console.log(datatosend)
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/user/getinfo`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(datatosend),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          console.log(result)
+          sendMessage(email, 'user');
+        } else {
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            { sender: 'bot', text: 'An error occurred while processing your data. Please enter your email again.' },
+          ]);
+          setInputValue('');
+        }
+      } else {
+        // Handle HTTP errors
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: 'bot', text: 'An error occurred while processing your data. Please enter your email again.' },
+        ]);
+        setInputValue('');
+        setEmailVerified(false); // Ensure email is not verified
+      }
+    } catch (error) {
+      // Handle fetch errors
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: 'bot', text: 'An error occurred while processing your data. Please enter your email again.' },
+      ]);
+      setInputValue('');
+      setEmailVerified(false); // Ensure email is not verified
+    }
+  };
+
   const handleDateChange = (date: Date | null) => {
     if (date) {
       setSelectedDate(date);
@@ -131,7 +174,7 @@ export default function Home() {
   };
 
   const handleSendButtonClick = () => {
-    if (currentQuestion === 1 && selectedDate) {
+    if (currentQuestion === 5 && selectedDate) {
       sendMessage(selectedDate.toDateString(), 'user');
     } else {
       sendMessage(inputValue, 'user');
@@ -143,60 +186,53 @@ export default function Home() {
       handleSendButtonClick();
     }
   };
-useEffect(()=>{
-  if(currentQuestion=== questions.length-1){
-    console.log('all user Input',userData);
-  }
-}, [currentQuestion,userData]);
+
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h1 style={styles.title}>Chatbot Interface</h1>
+    <div className="flex flex-col items-center justify-center h-screen bg-[#e0e5ec] bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url("himan.jpg")' }}>
+      <header className="text-center mb-[500px] p-5 bg-[#cdf0ff] shadow-lg rounded-lg w-4/5 max-w-[600px]">
+        <h1 className="text-[#333] text-3xl m-0">Chatbot Interface</h1>
       </header>
-      <div style={styles.buttonContainer}>
+      <div className="fixed bottom-5 right-5">
         <button
-          style={{ ...styles.chatButton, ...(showChatbot ? styles.chatButtonHover : {}) }}
+          className={`w-16 h-16 p-2 text-lg font-semibold text-white bg-[#1e1f1f] border-none rounded-full shadow-lg transition-transform ${showChatbot ? 'bg-[#0056b3] translate-y-[-2px]' : ''}`}
           onClick={toggleChatbot}
         >
-          {showChatbot ? 'Close Chat' : <img src="aichatbot.png" alt="Chatbot" />}
+          {showChatbot ? 'Close' : <img src="aichatbot.png" alt="Chatbot" className="w-12 h-12" />}
         </button>
       </div>
 
       {showChatbot && (
-        <div style={styles.chatContainer}>
-          <div style={styles.chatHeader} onClick={toggleChatbot}>
+        <div className="fixed bottom-5 right-5 w-[350px] h-[450px] rounded-lg bg-white shadow-lg flex flex-col">
+          <div className="bg-[#114378] text-white p-2 text-center cursor-pointer rounded-t-lg" onClick={toggleChatbot}>
             Chatbot
           </div>
-          <div style={styles.chatMessages}>
+          <div className="flex-1 p-2 overflow-y-auto border-b border-gray-300">
             {messages.map((message, index) => (
               <div
                 key={index}
-                style={{
-                  ...styles.message,
-                  ...(message.sender === 'user' ? styles.userMessage : styles.botMessage),
-                }}
+                className={`mb-2 p-2 rounded-lg max-w-[80%] break-words ${message.sender === 'user' ? 'bg-[#b4bbc6] text-white ml-auto text-right' : 'bg-blue-500 text-white'}`}
               >
                 {message.text}
               </div>
             ))}
             {!bookingStarted && !optionSelected && (
-              <div style={styles.initialOptions}>
-                <button style={styles.yesButton} onClick={() => sendMessage('yes', 'user')}>
+              <div className="flex justify-center mt-2">
+                <button className="bg-[#28a745] text-white p-2 mx-1 rounded cursor-pointer" onClick={() => sendMessage('yes', 'user')}>
                   Yes
                 </button>
-                <button style={styles.noButton} onClick={() => sendMessage('no', 'user')}>
+                <button className="bg-[#dc3545] text-white p-2 mx-1 rounded cursor-pointer" onClick={() => sendMessage('no', 'user')}>
                   No
                 </button>
               </div>
             )}
           </div>
-          <div style={styles.chatInputContainer}>
-            {currentQuestion === 1 ? (
+          <div className="p-2 border-t border-gray-300 flex items-center">
+            {currentQuestion === 5 ? (
               <DatePicker
                 selected={selectedDate}
                 onChange={handleDateChange}
                 placeholderText="Select a date"
-                style={styles.chatInput}
+                className="flex-1 p-2 text-sm bg-white text-black border border-gray-300 rounded mr-2"
               />
             ) : (
               <input
@@ -205,12 +241,13 @@ useEffect(()=>{
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleInputKeyDown}
                 placeholder="Type your message..."
-                style={styles.chatInput}
+                className="flex-1 p-2 text-sm bg-white text-black border border-gray-300 rounded mr-2"
               />
             )}
             <button
-              style={{ ...styles.sendButton, ...(inputValue || selectedDate ? styles.sendButtonHover : {}) }}
+              className={`bg-[#007bff] text-white border-none p-2 rounded cursor-pointer transition-colors ${inputValue || selectedDate ? 'bg-[#0056b3]' : ''}`}
               onClick={handleSendButtonClick}
+              disabled={currentQuestion === 4 && !emailVerified} // Disable send button if email is not verified
             >
               Send
             </button>
@@ -220,155 +257,3 @@ useEffect(()=>{
     </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    fontFamily: 'Arial, sans-serif',
-    margin: 0,
-    padding: 0,
-    height: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    background: '#e0e5ec',
-    position: 'relative',
-    backgroundImage: 'url("himan.jpg")',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '500px',
-    padding: '20px',
-    background: '#cdf0ff',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    borderRadius: '10px',
-    width: '80%',
-    maxWidth: '600px',
-  },
-  title: {
-    color: '#333333',
-    fontSize: '2rem',
-    margin: 0,
-  },
-  buttonContainer: {
-    position: 'fixed',
-    bottom: '20px',
-    right: '20px',
-    borderRadius: '50%',
-  },
-  chatButton: {
-    padding: '15px 15px',
-    fontSize: '16px',
-    color: '#fff',
-    backgroundColor: '#1e1f1f',
-    border: 'none',
-    marginRight: '25px',
-    cursor: 'pointer',
-    boxShadow: '6px 6px 8px #000000, -4px -4px 8px #000000',
-    transition: 'background-color 0.3s, transform 0.3s',
-    width: '90px',
-    height: '90px',
-    borderRadius: '50%',
-  },
-  chatButtonHover: {
-    backgroundColor: '#0056b3',
-    transform: 'translateY(-2px)',
-  },
-  chatContainer: {
-    position: 'fixed',
-    bottom: '20px',
-    right: '20px',
-    width: '350px',
-    height: '450px',
-    borderRadius: '10px',
-    backgroundColor: '#ffffff',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  chatHeader: {
-    backgroundColor: '#114378',
-    color: '#ffffff',
-    padding: '10px',
-    textAlign: 'center',
-    cursor: 'pointer',
-    borderTopLeftRadius: '10px',
-    borderTopRightRadius: '10px',
-  },
-  chatMessages: {
-    flex: 1,
-    padding: '10px',
-    overflowY: 'auto',
-    borderBottom: '1px solid #ddd',
-  },
-  message: {
-    marginBottom: '10px',
-    padding: '10px',
-    borderRadius: '10px',
-    maxWidth: '80%',
-    wordWrap: 'break-word',
-  },
-  botMessage: {
-    backgroundColor: 'blue',
-    alignSelf: 'flex-start',
-  },
-  userMessage: {
-    backgroundColor: '#b4bbc6',
-    color: '#ffffff',
-    alignSelf: 'flex-end',
-    textAlign:'right',
-  },
-  initialOptions: {
-    display: 'flex',
-    justifyContent: 'center',
-    marginTop: '10px',
-  },
-  yesButton: {
-    backgroundColor: '#28a745',
-    color: '#ffffff',
-    padding: '10px 20px',
-    margin: '0 5px',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
-  },
-  noButton: {
-    backgroundColor: '#dc3545',
-    color: '#ffffff',
-    padding: '10px 20px',
-    margin: '0 5px',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
-  },
-  chatInputContainer: {
-    padding: '10px',
-    borderTop: '1px solid #ddd',
-    display: 'flex',
-    color:'black',
-  },
-  chatInput: {
-    flex: 1,
-    padding: '10px',
-    fontSize: '14px',
-    borderRadius: '5px',
-    border: '1px solid #ddd',
-    outline: 'none',
-    marginRight: '10px',
-  },
-  sendButton: {
-    backgroundColor: '#007bff',
-    color: '#ffffff',
-    border: 'none',
-    padding: '10px 20px',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s',
-  },
-  sendButtonHover: {
-    backgroundColor: '#0056b3',
-  },
-};
