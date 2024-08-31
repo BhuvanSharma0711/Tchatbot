@@ -5,7 +5,7 @@ WORKDIR /app
 COPY . /app
 
 RUN npm install
-RUN npm i prisma@5.17.0
+RUN npm i prisma@5.19.0
 RUN npm run db:generate
 RUN npm run build
 
