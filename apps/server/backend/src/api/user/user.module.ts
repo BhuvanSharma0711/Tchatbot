@@ -7,7 +7,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 @Module({
   imports: [ConfigModule],
   controllers: [UserController],
-  providers: [UserService,
+  providers: [UserService,ConfigService,
     {
       provide: 'REDIS',
       useFactory: () => {

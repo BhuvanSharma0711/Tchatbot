@@ -90,8 +90,9 @@ export class UserService {
     return { message: 'Email verified successfully' };
   }
 
-  async bookTicket(body: ticketinfoDto, email: string) {
-    const { show1,show2,numbTicket } = body;
+  async bookTicket(body: {ticketinfoDto, email: string}) {
+    const { show1,show2,numbTicket } = body.ticketinfoDto;
+    const email=body.email;
   
     if (!numbTicket || !email) {
       throw new ForbiddenException('Missing required fields');
