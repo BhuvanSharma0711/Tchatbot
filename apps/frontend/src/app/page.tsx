@@ -11,7 +11,9 @@ export default function Home() {
   const [bookingStarted, setBookingStarted] = useState<boolean>(false);
   const [optionSelected, setOptionSelected] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [userData, setUserData] = useState<{ [key: string]: string }>({});
+  const [userData, setUserData] = useState<{
+    [key: string]: string | boolean | number;
+  }>({});
   const [emailVerified, setEmailVerified] = useState<boolean>(false); // Track email submission status
 
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL; // Replace with your actual API base URL
@@ -23,6 +25,8 @@ export default function Home() {
     "Enter the email for verification?",
     "Enter OTP?",
     "What's your date for the visit?",
+    "Do you want to buy tickets for Show 1? (Yes/No)",
+    "Do you want to buy tickets for Show 2? (Yes/No)",
     "How many tickets do you need?",
     "Thank you for providing your information",
   ];
@@ -35,84 +39,119 @@ export default function Home() {
   };
 
   const sendMessage = (message: string, sender: string) => {
-    if (message.trim() !== '') {
-      setMessages((prevMessages) => [...prevMessages, { sender, text: message }]);
-      setInputValue('');
+    if (message.trim() === '') return;
 
-      if (!bookingStarted && !optionSelected) {
-        setOptionSelected(true);
-        if (message.toLowerCase() === 'yes') {
-          setBookingStarted(true);
-          setCurrentQuestion(0); // Start with the first question in the new sequence
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { sender: 'bot', text: questions[currentQuestion] },
-          ]);
-        } else if (message.toLowerCase() === 'no') {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { sender: 'bot', text: 'Thank you for your time!' },
-          ]);
-          setTimeout(() => {
-            setOptionSelected(false);
-            setShowChatbot(false);
-          }, 2000);
-        }
-      } else {
-        const questionKey = getQuestionKey(currentQuestion);
-        setUserData((prevData) => ({
-          ...prevData,
-          [questionKey]: message,
-        }));
+    setMessages((prevMessages) => [...prevMessages, { sender, text: message }]);
+    setInputValue('');
 
-        if (currentQuestion === 3) {
-          handleEmailInput(message); // Store email as soon as it is entered
-        } else if (currentQuestion === 5 && selectedDate) {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { sender: 'user', text: selectedDate.toDateString() },
-            { sender: 'bot', text: questions[currentQuestion + 1] }
-          ]);
-          setUserData((prevData) => ({
-            ...prevData,
-            'date_for_visit': selectedDate.toDateString(), // Store selected date in userData
-          }));
-          setCurrentQuestion((prev) => prev + 1);
-          setSelectedDate(null); // Reset the date picker for the next question
-        } else if (currentQuestion < questions.length - 1) {
-          if (currentQuestion === 4 && !emailVerified) {
-            // Do not proceed to next question if email submission is not successful
-            return;
-          }
-          setCurrentQuestion((prev) => prev + 1);
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { sender: 'bot', text: questions[currentQuestion + 1] },
-          ]);
-        } else {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { sender: 'bot', text: 'Thank you for providing the information!' },
-          ]);
-          setTimeout(() => {
-            setShowChatbot(false);
-          }, 2000);
-        }
-      }
+    if (!bookingStarted && !optionSelected) {
+      handleInitialResponse(message);
+    } else {
+      handleQuestionResponse(message);
     }
   };
 
-  const getQuestionKey = (index: number) => {
-    switch (index) {
-      case 0: return 'name';
-      case 1: return 'UID_type';
-      case 2: return 'UID';
-      case 3: return 'email';
-      case 4: return 'OTP';
-      case 5: return 'date_for_visit';
-      case 6: return 'ticket_count';
-      default: return '';
+  const handleInitialResponse = (message: string) => {
+    setOptionSelected(true);
+    if (message.toLowerCase() === 'yes') {
+      setBookingStarted(true);
+      setCurrentQuestion(0); // Start with the first question in the new sequence
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: 'bot', text: questions[currentQuestion] },
+      ]);
+    } else if (message.toLowerCase() === 'no') {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: 'bot', text: 'Thank you for your time!' },
+      ]);
+      setTimeout(() => {
+        setOptionSelected(false);
+        setShowChatbot(false);
+      }, 2000);
     }
+  };
+
+  const handleQuestionResponse = (message: string) => {
+    const questionKey = getQuestionKey(currentQuestion);
+    setUserData((prevData) => ({
+      ...prevData,
+      [questionKey]: message,
+    }));
+  
+    if (currentQuestion === 3) {
+      handleEmailInput(message);
+    } else if (currentQuestion === 4) {
+      handleOTPInput(message);
+    } else if (currentQuestion === 5 && selectedDate) {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: 'user', text: selectedDate.toDateString() },
+        { sender: 'bot', text: questions[6] }
+      ]);
+      setUserData((prevData) => ({
+        ...prevData,
+        'date_for_visit': selectedDate.toDateString(),
+      }));
+      setSelectedDate(null);
+      setCurrentQuestion(6);
+    } else if (currentQuestion === 6) {
+      handleShow1Response(message);
+    } else if (currentQuestion === 7) {
+      handleShow2Response(message);
+    } else if (currentQuestion === 8 && inputValue) {
+      const numbTicket = parseInt(inputValue, 10);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: 'user', text: inputValue },
+        { sender: 'bot', text: 'Thank you for providing the information!' },
+      ]);
+      setUserData((prevData) => ({
+        ...prevData,
+        'numbTicket': numbTicket,
+      }));
+      sendBookingRequest(numbTicket); // Pass numbTicket here
+    } else if (currentQuestion < questions.length - 1) {
+      if (currentQuestion === 4 && !emailVerified) return;
+      setCurrentQuestion((prev) => prev + 1);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: 'bot', text: questions[currentQuestion + 1] },
+      ]);
+    } else {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: 'bot', text: 'Thank you for providing the information!' },
+      ]);
+      setTimeout(() => setShowChatbot(false), 2000);
+    }
+  };
+  
+
+  const handleShow1Response = (message: string) => {
+    const show1 = message.toLowerCase() === 'yes';
+    setUserData((prevData) => ({
+      ...prevData,
+      show1,
+    }));
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { sender: 'bot', text: questions[7] },
+    ]);
+    setCurrentQuestion(7);
+  };
+
+  const handleShow2Response = (message: string) => {
+    const show2 = message.toLowerCase() === 'yes';
+    setUserData((prevData) => ({
+      ...prevData,
+      show2,
+    }));
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { sender: 'bot', text: questions[8] },
+    ]);
+    setCurrentQuestion(8);
   };
 
   const handleEmailInput = async (email: string) => {
@@ -121,8 +160,8 @@ export default function Home() {
       email,
     }));
 
-    const datatosend = { ...userData, email }
-    console.log(datatosend)
+    const datatosend = { ...userData, email };
+    console.log(datatosend);
 
     try {
       const response = await fetch(`${apiBaseUrl}/user/getinfo`, {
@@ -133,35 +172,52 @@ export default function Home() {
         body: JSON.stringify(datatosend),
       });
 
+      const result = await response.json();
       if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          console.log(result)
-          sendMessage(email, 'user');
-        } else {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { sender: 'bot', text: 'An error occurred while processing your data. Please enter your email again.' },
-          ]);
-          setInputValue('');
-        }
-      } else {
-        // Handle HTTP errors
+        console.log(result);
+        setCurrentQuestion((prev) => prev + 1);
         setMessages((prevMessages) => [
           ...prevMessages,
-          { sender: 'bot', text: 'An error occurred while processing your data. Please enter your email again.' },
+          { sender: 'bot', text: questions[currentQuestion + 1] },
         ]);
-        setInputValue('');
-        setEmailVerified(false); // Ensure email is not verified
+      } else {
+        console.log("error");
       }
     } catch (error) {
-      // Handle fetch errors
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { sender: 'bot', text: 'An error occurred while processing your data. Please enter your email again.' },
-      ]);
-      setInputValue('');
-      setEmailVerified(false); // Ensure email is not verified
+      console.log(error);
+    }
+  };
+
+  const handleOTPInput = async (otp: string) => {
+    const email = userData.email; // Retrieve email from userData
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/user/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, token: otp }), // Correct format for JSON
+      });
+
+      const result = await response.json();
+      if (response.ok) { // Assuming the response has a 'valid' field
+        console.log("OTP verified successfully");
+        setEmailVerified(true); // Mark email as verified
+        setCurrentQuestion((prev) => prev + 1);
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: 'bot', text: questions[currentQuestion + 1] },
+        ]);
+      } else {
+        console.log("Invalid OTP, please try again.");
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: 'bot', text: "Invalid OTP, please enter the correct OTP." },
+        ]);
+      }
+    } catch (error) {
+      console.log(error);
     }
   };
 
@@ -184,6 +240,68 @@ export default function Home() {
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSendButtonClick();
+    }
+  };
+
+  const sendBookingRequest = async (numbTicket: number) => {
+    const { name, UID_type, UID, email, date_for_visit, show1, show2 } = userData;
+    console.log("Sending booking request with the following data:", {
+      name,
+      UID_type,
+      UID,
+      email,
+      date_for_visit,
+      show1,
+      show2,
+      numbTicket
+    });
+  
+    try {
+      const response = await fetch(`${apiBaseUrl}/user/book`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketinfoDto: { show1, show2, numbTicket },
+          email,
+        }),
+      });
+  
+      if (response.ok) {
+        console.log("Booking successful");
+        setCurrentQuestion((prev) => prev + 1);
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: 'bot', text: questions[currentQuestion + 1] },
+        ]);
+      } else {
+        console.log("Booking failed");
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: 'bot', text: 'Failed to book tickets. Please try again.' },
+        ]);
+      }
+    } catch (error) {
+      console.log(error);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: 'bot', text: 'An error occurred while booking. Please try again.' },
+      ]);
+    }
+  };
+  
+
+  const getQuestionKey = (index: number): string => {
+    switch (index) {
+      case 0: return 'name';
+      case 1: return 'UID_type';
+      case 2: return 'UID';
+      case 3: return 'email';
+      case 4: return 'otp';
+      case 5: return 'date_for_visit';
+      case 6: return 'show1';
+      case 7: return 'show2';
+      case 8: return 'numbTicket';
+      default: return '';
     }
   };
 
@@ -226,13 +344,13 @@ export default function Home() {
               </div>
             )}
           </div>
-          <div className="p-2 border-t border-gray-300 flex items-center">
+          <div className="p-2 flex">
             {currentQuestion === 5 ? (
               <DatePicker
                 selected={selectedDate}
                 onChange={handleDateChange}
-                placeholderText="Select a date"
-                className="flex-1 p-2 text-sm bg-white text-black border border-gray-300 rounded mr-2"
+                dateFormat="dd/MM/yyyy"
+                className="flex-1 p-2 border rounded"
               />
             ) : (
               <input
@@ -240,15 +358,11 @@ export default function Home() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleInputKeyDown}
-                placeholder="Type your message..."
-                className="flex-1 p-2 text-sm bg-white text-black border border-gray-300 rounded mr-2"
+                placeholder="Type a message..."
+                className="flex-1 p-2 border rounded"
               />
             )}
-            <button
-              className={`bg-[#007bff] text-white border-none p-2 rounded cursor-pointer transition-colors ${inputValue || selectedDate ? 'bg-[#0056b3]' : ''}`}
-              onClick={handleSendButtonClick}
-              disabled={currentQuestion === 4 && !emailVerified} // Disable send button if email is not verified
-            >
+            <button className="bg-blue-500 text-white p-2 ml-2 rounded" onClick={handleSendButtonClick}>
               Send
             </button>
           </div>

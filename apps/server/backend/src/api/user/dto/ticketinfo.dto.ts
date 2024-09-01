@@ -12,6 +12,8 @@ class ticketinfoDto {
     @IsNotEmpty()
     @IsNumber()
     numbTicket:number
+
+    
 }
 
 export default ticketinfoDto
