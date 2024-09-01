@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Ticket" ADD COLUMN     "payment" BOOLEAN NOT NULL DEFAULT false,
+ALTER COLUMN "date" DROP DEFAULT;

@@ -13,8 +13,10 @@ model Ticket {
   userId   String @unique
   show1    Boolean   @default(false)
   show2    Boolean   @default(false)
-  date     DateTime  @default(now())
+  date     String  
   numbTicket Int       @default(0)
+  email    String    @unique
+  payment  Boolean   @default(false)
 }
 model User {
   id         String  @id @default(cuid())

@@ -5,6 +5,12 @@ import Redis from 'ioredis';
 import { PrismaService } from 'src/prisma/prisma.service';
 import handleErrors from 'src/handlers/handleErrors.global';
 import ticketinfoDto from './dto/ticketinfo.dto';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { join } from 'path';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+
+const execPromise = promisify(exec);
 
 @Injectable()
 export class UserService {
@@ -90,14 +96,14 @@ export class UserService {
     return { message: 'Email verified successfully' };
   }
 
-  async bookTicket(body: {ticketinfoDto, email: string}) {
-    const { show1,show2,numbTicket } = body.ticketinfoDto;
-    const email=body.email;
-  
+  async bookTicket(body: { ticketinfoDto: { show1: boolean; show2: boolean; date:string;numbTicket: number;payment:boolean }; email: string }) {
+    const { show1, show2,date, numbTicket,payment } = body.ticketinfoDto;
+    const email = body.email;
+
     if (!numbTicket || !email) {
       throw new ForbiddenException('Missing required fields');
     }
-  
+
     const user = await this.prisma.user.findUnique({
       where: {
         email: email,
@@ -106,17 +112,18 @@ export class UserService {
         id: true,
       },
     });
-  
+
     if (!user) {
       throw new Error('User not found');
     }
-  
+
+    // Fetch ticket data from PostgreSQL
     const existingTicket = await this.prisma.ticket.findUnique({
       where: {
         userId: user.id,
       },
     });
-  
+
     if (existingTicket) {
       await this.prisma.ticket.update({
         where: {
@@ -125,7 +132,10 @@ export class UserService {
         data: {
           show1,
           show2,
+          date,
           numbTicket,
+          email,
+          payment
         },
       });
     } else {
@@ -134,10 +144,49 @@ export class UserService {
           userId: user.id,
           show1,
           show2,
+          date,
           numbTicket,
+          email,
+          payment
         },
       });
     }
+
+    const ticketData = existingTicket 
+    // Resolve paths relative to the project root
+    const scriptPath = join(__dirname, '..', '..', '..', 'scripts', 'query_ticket.py');
+    const jsonPath = join(__dirname, '..', '..', '..', 'scripts', 'ticket_data.json');
+
+    // Ensure the scripts directory exists
+    const scriptsDir = join(__dirname, '..', '..', '..', 'scripts');
+    if (!existsSync(scriptsDir)) {
+      mkdirSync(scriptsDir);
+    }
+
+    // Write ticket data to a temporary JSON file
+    writeFileSync(jsonPath, JSON.stringify(ticketData));
+
+    // Call the Python script and pass the user ID
+    const { stdout, stderr } = await execPromise(`python ${scriptPath} ${user.id}`);
+
+    console.log(stdout)
+    if (stderr) {
+      throw new Error(`Error executing Python script: ${stderr}`);
+    }
+
+    // Parse JSON output
+    let result;
+    try {
+      result = JSON.parse(stdout);
+    } catch (err) {
+      throw new Error(`Invalid JSON output from Python script: ${stdout}`);
+    }
+
+    if (result.error) {
+      throw new Error(result.error);
+    }
+
+    // Ticket generation and sending handled by the Python script
+   
   }
 }
-

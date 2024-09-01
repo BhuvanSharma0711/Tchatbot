@@ -1,4 +1,4 @@
-import { IsBoolean, IsNotEmpty, IsNumber } from "class-validator"
+import { IsBoolean, IsDate, IsNotEmpty, IsNumber } from "class-validator"
 
 class ticketinfoDto {
     @IsBoolean()
@@ -9,11 +9,15 @@ class ticketinfoDto {
     @IsNotEmpty()
     show2:boolean
 
+    date:Date
+
     @IsNotEmpty()
     @IsNumber()
     numbTicket:number
 
-    
+    @IsBoolean()
+    @IsNotEmpty()
+    payment:boolean
 }
 
 export default ticketinfoDto

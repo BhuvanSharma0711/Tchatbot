@@ -245,6 +245,7 @@ export default function Home() {
 
   const sendBookingRequest = async (numbTicket: number) => {
     const { name, UID_type, UID, email, date_for_visit, show1, show2 } = userData;
+    const payment=true
     console.log("Sending booking request with the following data:", {
       name,
       UID_type,
@@ -261,7 +262,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ticketinfoDto: { show1, show2, numbTicket },
+          ticketinfoDto: { show1, show2,date:date_for_visit ,numbTicket,payment },
           email,
         }),
       });
