@@ -10,6 +10,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from io import BytesIO
+import os
 
 # Define your database URL
 DATABASE_URL = "postgresql://postgres:pass@localhost:5432/db"
@@ -48,7 +49,6 @@ def generate_ticket(ticket_data):
     name = ticket_data.get('name', 'Event Ticket')
     show1 = str(ticket_data['show1'])
     show2 = str(ticket_data['show2'])
-    email = ticket_data['email']
     event_date = ticket_data['timestamp']
     
     # Generate unique ticket ID if not already present
@@ -146,7 +146,12 @@ if __name__ == "__main__":
 
         # Send the ticket via email
         send_ticket_via_email(ticket_data['email'], ticket_id, ticket_path)
-        print(json.dumps(ticket_data))
+        os.remove(ticket_path)
+        result={
+            "ticked_data":ticket_data,
+            "message":"Ticket created and sent successfully"
+        }
+        print(json.dumps(result))
     
     except Exception as e:
         print(json.dumps({'error': str(e)}))

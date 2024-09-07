@@ -169,7 +169,6 @@ export class UserService {
     // Call the Python script and pass the user ID
     const { stdout, stderr } = await execPromise(`python ${scriptPath} ${user.id}`);
 
-    console.log(stdout)
     if (stderr) {
       throw new Error(`Error executing Python script: ${stderr}`);
     }
@@ -181,7 +180,7 @@ export class UserService {
     } catch (err) {
       throw new Error(`Invalid JSON output from Python script: ${stdout}`);
     }
-
+    console.log(result)
     if (result.error) {
       throw new Error(result.error);
     }
