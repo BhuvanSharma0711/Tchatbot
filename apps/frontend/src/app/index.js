@@ -1,4 +1,3 @@
-d:\chatbotself\chatbot\src\app\index.js// pages/index.js
 import { useState } from 'react';
 
 export default function Home() {
