@@ -72,7 +72,7 @@ We would like to extend our gratitude to all the contributors who helped develop
 
 ### System Flow Diagram
 
-![System Flow Diagram](./Copy_of_Flow_diagram_tchatbot.svg)
+![System Flow Diagram](./flowDiagram.svg)
 
 ### Sequential Flow Diagram
 
