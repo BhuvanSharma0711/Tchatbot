@@ -36,7 +36,7 @@ For information on how to use TixBot, refer to our Usage Guide.
 ## Features
 
 - **Chatbot Interaction**: Book tickets by chatting with TixBot.
-- **QUery resolution**: Resolve users queries and solve their problems.
+- **Query resolution**: Resolve users queries and solve their problems.
 - **Ticket Generation**: Receive tickets with QR codes for easy entry.
 - **Email Confirmation**: Tickets and booking details are emailed directly to the user.
 - **Multilingual Support**: Chatbot supports multiple languages for global users.
