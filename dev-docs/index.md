@@ -18,14 +18,13 @@ To run the project locally, ensure you have the following installed:
 - **Ticket generation**: Python (SQLAlchemy, PIL, qrcode)
 - **Database**: Docker (PostgreSQL, Redis)
 
-## Packages
+### System Flow Diagram
 
-The project is organized into multiple packages:
-- **chatbot**: Contains the Rasa/Dialogflow code and logic for TixBot.
-- **flutter-app**: Contains the Flutter code for the mobile application.
-- **server/backend**: Contains the backend API logic for ticket booking, user authentication, and payment.
-- **server/ticketing**: Manages ticket generation, including PDF creation and QR code generation.
-- **web-app**: Contains the web interface for booking and interacting with the bot.
+![System Flow Diagram](./flowDiagram.svg)
+
+### Sequential Flow Diagram
+
+![Sequential Flow Diagram](./sequential.svg)
 
 ## Installation
 
@@ -38,7 +37,7 @@ For information on how to use TixBot, refer to our Usage Guide.
 ## Features
 
 - **Chatbot Interaction**: Book tickets by chatting with TixBot.
-- **Payment Integration**: Secure payments via Stripe and PayPal.
+- **QUery resolution**: Resolve users queries and solve their problems.
 - **Ticket Generation**: Receive tickets with QR codes for easy entry.
 - **Email Confirmation**: Tickets and booking details are emailed directly to the user.
 - **Multilingual Support**: Chatbot supports multiple languages for global users.
@@ -58,7 +57,7 @@ This project is licensed under a Custom License to prevent commercial use. For m
 ## Contact
 
 For any inquiries or further information, please contact us at:
-Email: [contacttixbot@gmail.com](mailto:contacttixbot@gmail.com)
+Email: [tixbot.nitkkr@gmail.com](mailto:tixbot.nitkkr@gmail.com)
 
 ## Support
 
@@ -67,14 +66,3 @@ If you encounter any issues while using or contributing to the project, please c
 ## Acknowledgments
 
 We would like to extend our gratitude to all the contributors who helped develop this project. Special thanks to the chatbot and AI community for their valuable resources.
-
-## Flow Diagrams
-
-### System Flow Diagram
-
-![System Flow Diagram](./flowDiagram.svg)
-
-### Sequential Flow Diagram
-
-![Sequential Flow Diagram](./sequential.svg)
-
