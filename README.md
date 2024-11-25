@@ -8,7 +8,7 @@ To run the project locally, ensure you have the following installed:
 - npm (version X.X.X)
 - Node.js (version X.X.X)
 - Flutter (version X.X.X)
-- Docker (optional for containerization)
+- Docker 
 
 ## Tech Stack
 
